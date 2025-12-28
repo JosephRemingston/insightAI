@@ -1,8 +1,8 @@
-import asyncHandler from "../utils/asyncHandler";
-import ApiError from "../utils/ApiError";
+import asyncHandler from "../utils/asyncHandler.js";
+import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { generateAccessToken , generateRefreshToken , storeRefreshToken , deleteRefreshToken , blacklistToken } from "../configs/jwt.js";
-import { User } from "../models/User.model.js";
+import { User } from "../models/user.models.js";
 
 
 export var login = asyncHandler(async (req , res) => {

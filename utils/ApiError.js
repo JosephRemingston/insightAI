@@ -1,4 +1,4 @@
-var { makeLog } = require("./logentries.js");
+import makeLog from "./logentries.js";
 
 class ApiError extends Error {
   constructor(statusCode, message) {

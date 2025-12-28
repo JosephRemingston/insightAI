@@ -1,4 +1,4 @@
-var fs = require("fs");
+import fs from "fs";
 async function makeLog(message, filecat, filename) {
   const now = new Date();
   const istOffset = 5.5 * 60 * 60 * 1000; // IST offset in milliseconds
