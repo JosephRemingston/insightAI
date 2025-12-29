@@ -1,5 +1,8 @@
 import jwt from 'jsonwebtoken';
 import redis from './redis.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || 'your-access-secret';
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-secret';
