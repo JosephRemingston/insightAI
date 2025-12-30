@@ -3,6 +3,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import ApiResponse from "./utils/ApiResponse.js";
 import authRoutes from "./routes/auth.routes.js";
+import connectionRoutes from "./routes/connection.routes.js";
 import connectDB from "./configs/database.js";
 
 dotenv.config();
@@ -14,6 +15,7 @@ app.use(cors());
 app.use(express.json());
 connectDB();
 app.use("/api/auth/" , authRoutes);
+app.use("/api/connection/" , connectionRoutes);
 
 app.get("/" , (req , res) => {
     return ApiResponse.success(res , "server")
