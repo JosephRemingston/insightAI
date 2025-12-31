@@ -8,8 +8,18 @@ var connectionSchema = new mongoose.Schema({
         required: true
     },
     connecteduri : {
-        type: String,
-        required: true
+        encryptedText: {
+            type: String,
+            required: true
+        },
+        iv: {
+            type: String,
+            required: true
+        },
+        authTag: {
+            type: String,
+            required: true
+        }
     },
     name : {
         type : String,

@@ -58,13 +58,22 @@ A secure authentication and database connection management API built with Expres
    REFRESH_TOKEN_SECRET=your-super-secret-refresh-key-min-32-chars
 
    # Database Encryption (Required for Connection Management)
-   # Must be at least 32 characters long
-   DB_ENCRYPTION_KEY=your-super-secret-encryption-key-min-32-chars
+   # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+   DB_ENCRYPTION_KEY=base64-encoded-32-byte-key
    ```
 
-   > **Tip:** Generate secure random keys using Node.js:
+   > **Important Security Notes:**
+   > - Use different secrets for development and production
+   > - Never commit the `.env` file to version control
+   > - The `DB_ENCRYPTION_KEY` must be base64-encoded and decode to exactly 32 bytes
+   > 
+   > **Generate secure random keys:**
    > ```bash
+   > # For JWT secrets (hex format)
    > node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+   > 
+   > # For encryption key (base64 format)
+   > node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
    > ```
 
 4. **Start Redis server** (if running locally)
@@ -87,17 +96,29 @@ A secure authentication and database connection management API built with Expres
 insightAI/
 ├── configs/
 │   ├── database.js      # MongoDB connection setup
-│   ├── encryption.js    # AES-256-GCM encryption utility
+│   ├── encryption.js    # AES-256-GCM encryption/decryption utility
 │   ├── jwt.js           # JWT generation and verification
 │   └── redis.js         # Redis client configuration
 ├── controllers/
-│   ├── auth.controller.js       # Auth logic (Login, Signup, etc.)
-│   └── connection.controllor.js # Connection management logic
+│   ├── ai.controllor.js         # AI-related logic (placeholder)
+│   ├── auth.controller.js       # Auth logic (Login, Signup, Logout, Refresh)
+│   └── connection.controllor.js # Connection CRUD and management
 ├── middlewares/
 │   └── auth.middlware.js    # JWT authentication middleware
 ├── models/
-│   ├── connection.models.js # Connection schema
+│   ├── connection.models.js # Connection schema (encrypted URI storage)
 │   └── user.models.js       # User schema
+├── routes/
+│   ├── auth.routes.js       # Auth API routes
+│   └── connection.routes.js # Connection API routes
+├── utils/
+│   ├── ApiError.js          # Custom error class
+│   ├── ApiResponse.js       # Standardized response class
+│   ├── asyncHandler.js      # Async wrapper for controllers
+│   ├── logentries.js        # Logging utility
+│   └── mongoConnections.js  # Map to store active user connections
+├── index.js             # App entry point
+└── package.json
 ├── routes/
 │   └── auth.routes.js       # Auth API routes
 ├── utils/
@@ -151,7 +172,7 @@ insightAI/
 
 ### Database Connections (Protected)
 
-#### Save Connection
+#### 1. Save Connection
 **POST** `/api/connections`
 *Headers:* `Authorization: Bearer <accessToken>`
 ```json
@@ -160,7 +181,23 @@ insightAI/
   "name": "Production DB"
 }
 ```
-*The `mongoUri` is encrypted before being stored in the database.*
+*The `mongoUri` is encrypted using AES-256-GCM before being stored. The encrypted object includes `encryptedText`, `iv`, and `authTag` for secure decryption.*
+
+#### 2. Connect to Database
+**POST** `/api/connections/connect`
+*Headers:* `Authorization: Bearer <accessToken>`
+```json
+{
+  "connectionId": "connection_mongodb_id"
+}
+```
+*Returns connection details including status, host, and database name. The connection is maintained in memory per user.*
+
+#### 3. Disconnect from Database
+**POST** `/api/connections/disconnect`
+*Headers:* `Authorization: Bearer <accessToken>`
+
+*Closes the active database connection for the current user and removes it from the connection pool.*
 
 ## 🔒 Security Implementation
 
@@ -171,10 +208,19 @@ insightAI/
 
 ### 2. Data Encryption
 - **Algorithm**: AES-256-GCM (Authenticated Encryption).
+- **Storage Format**: MongoDB connection URIs are stored as objects containing:
+  - `encryptedText`: The encrypted URI string
+  - `iv`: Initialization Vector (unique per encryption)
+  - `authTag`: Authentication tag for data integrity verification
 - **Implementation**: 
-  - Uses a unique IV (Initialization Vector) for every encryption.
-  - Generates an Auth Tag to verify data integrity.
-  - The `DB_ENCRYPTION_KEY` is hashed to ensure a valid 32-byte key.
+  - Uses a unique IV (Initialization Vector) for every encryption operation.
+  - Generates an Auth Tag to verify data integrity during decryption.
+  - The `DB_ENCRYPTION_KEY` must be exactly 32 bytes (base64 encoded) for AES-256.
+  
+**Generate a secure encryption key:**
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
 
 ### 3. Password Security
 - Passwords are **never** stored in plain text.
@@ -197,19 +243,44 @@ curl -X POST http://localhost:3000/api/connections \
   -d '{"mongoUri":"mongodb://localhost:27017/mydb","name":"My Local DB"}'
 ```
 
+**Connect to Database Example:**
+```bash
+curl -X POST http://localhost:3000/api/connections/connect \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"connectionId":"675a1b2c3d4e5f6789abcdef"}'
+```
+
+**Disconnect from Database Example:**
+```bash
+curl -X POST http://localhost:3000/api/connections/disconnect \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
 ## 🎯 Roadmap & TODO
+
+### Recently Completed ✅
+- [x] Fixed encryption storage format (now stores complete encrypted object)
+- [x] Implemented connection pooling per user with `mongoConnections` Map
+- [x] Added connect and disconnect endpoints
+- [x] Fixed circular JSON reference in connection response
+- [x] Consistent userId handling in connection Map (using `.toString()`)
 
 ### Critical Fixes
 - [ ] Fix middleware error handling (use `throw ApiError`).
 - [ ] Standardize variable declarations (`const`/`let` instead of `var`).
 - [ ] Remove unused fields from User model.
+- [ ] Add input validation for all endpoints.
 
 ### Future Enhancements
 - [ ] **Input Validation**: Add Joi/Zod for request validation.
 - [ ] **Rate Limiting**: Prevent brute-force attacks.
-- [ ] **Connection Management**: Add endpoints to list, update, and delete connections.
-- [ ] **Decryption**: Add utility to decrypt connection strings when needed.
+- [ ] **Connection Management**: Add endpoints to list and delete saved connections.
+- [ ] **Connection Security**: Add ownership validation for connections.
+- [ ] **Error Handling**: Improve error messages and add error logging.
 - [ ] **Docker Support**: Containerize the application.
+- [ ] **Testing**: Add unit and integration tests.
+- [ ] **Documentation**: Add API documentation using Swagger/OpenAPI.
 
 ## 👤 Author
 
