@@ -1,52 +1,47 @@
 import crypto from "crypto";
 import dotenv from "dotenv";
 
-dotenv.config();
+dotenv.config({path: "../.env"});
 
-const algorithm = "aes-256-gcm";
 
-// AES-256 requires a 32-byte (256-bit) key
-// Generate key from environment variable or use a default (for development only)
-const getEncryptionKey = () => {
-  const secret = process.env.DB_ENCRYPTION_KEY;
-  
-  if (!secret) {
-    throw new Error('DB_ENCRYPTION_KEY environment variable is not set');
-  }
-  
-  // Create a 32-byte key using SHA-256 hash of the secret
-  return crypto.createHash('sha256').update(secret).digest();
-};
+const ALGORITHM = "aes-256-gcm";
 
-const key = getEncryptionKey();
+const KEY = Buffer.from(process.env.DB_ENCRYPTION_KEY, "base64");
 
-function encrypt(text) {
+console.log("Decoded key byte length:", KEY.length);
+
+if (KEY.length !== 32) {
+  throw new Error("Encryption key must be 32 bytes for AES-256");
+}
+
+
+function encryptString(text) {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv(algorithm, key, iv);
+  const cipher = crypto.createCipheriv(ALGORITHM, KEY, iv);
 
   let encrypted = cipher.update(text, "utf8", "hex");
   encrypted += cipher.final("hex");
 
   return {
-    content: encrypted,
+    encryptedText: encrypted,
     iv: iv.toString("hex"),
-    tag: cipher.getAuthTag().toString("hex"),
+    authTag: cipher.getAuthTag().toString("hex"),
   };
 }
 
-function decrypt(encrypted) {
+function decryptString(encryptedObj) {
   const decipher = crypto.createDecipheriv(
-    algorithm,
-    key,
-    Buffer.from(encrypted.iv, "hex")
+    ALGORITHM,
+    KEY,
+    Buffer.from(encryptedObj.iv, "hex")
   );
 
-  decipher.setAuthTag(Buffer.from(encrypted.tag, "hex"));
+  decipher.setAuthTag(Buffer.from(encryptedObj.authTag, "hex"));
 
-  let decrypted = decipher.update(encrypted.content, "hex", "utf8");
+  let decrypted = decipher.update(encryptedObj.encryptedText, "hex", "utf8");
   decrypted += decipher.final("utf8");
 
   return decrypted;
 }
 
-export {encrypt, decrypt};
+export { encryptString, decryptString };
