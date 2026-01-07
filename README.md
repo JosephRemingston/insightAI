@@ -1,6 +1,6 @@
 # InsightAI API
 
-A secure authentication and database connection management API built with Express.js, JWT, Redis, and MongoDB.
+A secure authentication, database connection management, and AI-powered schema analysis API built with Express.js, JWT, Redis, and MongoDB.
 
 ## 🚀 Features
 
@@ -10,8 +10,16 @@ A secure authentication and database connection management API built with Expres
   - **Redis Integration**: Fast storage for refresh tokens and blacklists.
   - **Token Blacklisting**: Immediate token invalidation on logout.
   - **Token Rotation**: Prevents race conditions and enhances security.
-- **Database Security**:
+- **Database Connection Management**:
+  - **Multi-Database Support**: Connect to any MongoDB instance.
   - **Connection Encryption**: MongoDB URIs are encrypted using **AES-256-GCM** before storage.
+  - **Active Connection Pool**: In-memory connection management per user.
+  - **Secure Storage**: Save and reuse encrypted connection strings.
+- **AI-Powered Schema Analysis**:
+  - **Automatic Schema Extraction**: Analyze connected databases and extract collection schemas.
+  - **Type Inference**: Automatically detect field types from sample documents.
+  - **Multi-Collection Support**: Analyze entire database schemas at once.
+- **Database Security**:
   - **Password Hashing**: User passwords hashed with **bcrypt**.
 - **Robust Architecture**:
   - **MVC Pattern**: Clean separation of concerns.
@@ -100,7 +108,7 @@ insightAI/
 │   ├── jwt.js           # JWT generation and verification
 │   └── redis.js         # Redis client configuration
 ├── controllers/
-│   ├── ai.controllor.js         # AI-related logic (placeholder)
+│   ├── ai.controllor.js         # AI schema extraction and analysis
 │   ├── auth.controller.js       # Auth logic (Login, Signup, Logout, Refresh)
 │   └── connection.controllor.js # Connection CRUD and management
 ├── middlewares/
@@ -109,6 +117,7 @@ insightAI/
 │   ├── connection.models.js # Connection schema (encrypted URI storage)
 │   └── user.models.js       # User schema
 ├── routes/
+│   ├── ai.routes.js         # AI/Schema analysis API routes
 │   ├── auth.routes.js       # Auth API routes
 │   └── connection.routes.js # Connection API routes
 ├── utils/
@@ -116,16 +125,7 @@ insightAI/
 │   ├── ApiResponse.js       # Standardized response class
 │   ├── asyncHandler.js      # Async wrapper for controllers
 │   ├── logentries.js        # Logging utility
-│   └── mongoConnections.js  # Map to store active user connections
-├── index.js             # App entry point
-└── package.json
-├── routes/
-│   └── auth.routes.js       # Auth API routes
-├── utils/
-│   ├── ApiError.js          # Custom error class
-│   ├── ApiResponse.js       # Standardized response class
-│   ├── asyncHandler.js      # Async wrapper for controllers
-│   └── logentries.js        # Logging utility
+│   └── mongoConnections.js  # Map to store active connections + type inference
 ├── index.js             # App entry point
 └── package.json
 ```
@@ -180,53 +180,106 @@ insightAI/
   "mongoUri": "mongodb://user:pass@host:port/db",
   "name": "Production DB"
 }
+``` String
+**POST** `/api/connection/get-connection-string`
+*Headers:* `Authorization: Bearer <accessToken>`
+```json
+{
+  "mongoUri": "mongodb://user:pass@host:port/db",
+  "name": "Production DB"
+}
 ```
 *The `mongoUri` is encrypted using AES-256-GCM before being stored. The encrypted object includes `encryptedText`, `iv`, and `authTag` for secure decryption.*
 
 #### 2. Connect to Database
-**POST** `/api/connections/connect`
+**POST** `/api/connection/connect-to-database`
 *Headers:* `Authorization: Bearer <accessToken>`
 ```json
 {
   "connectionId": "connection_mongodb_id"
 }
 ```
-*Returns connection details including status, host, and database name. The connection is maintained in memory per user.*
+*Returns connection details including status, host, and database name. The connection is maintained in memory per user. Only one active connection per user is allowed.*
 
 #### 3. Disconnect from Database
-**POST** `/api/connections/disconnect`
+**POST** `/api/connection/disconnect-database`
 *Headers:* `Authorization: Bearer <accessToken>`
 
 *Closes the active database connection for the current user and removes it from the connection pool.*
 
-## 🔒 Security Implementation
+### AI & Schema Analysis (Protected)
 
-### 1. Token Management
-- **Access Tokens**: Short lifespan (e.g., 15 mins). Used for API access.
-- **Refresh Tokens**: Longer lifespan (e.g., 7 days). Stored in Redis. Used to get new access tokens.
-- **Blacklisting**: When a user logs out, the access token is added to a Redis blacklist until it expires.
+#### 1. Extract Database Schema
+**POST** `/api/ai/get-mongo-schema`
+*Headers:* `Authorization: Bearer <accessToken>`
 
-### 2. Data Encryption
-- **Algorithm**: AES-256-GCM (Authenticated Encryption).
-- **Storage Format**: MongoDB connection URIs are stored as objects containing:
-  - `encryptedText`: The encrypted URI string
-  - `iv`: Initialization Vector (unique per encryption)
-  - `authTag`: Authentication tag for data integrity verification
-- **Implementation**: 
-  - Uses a unique IV (Initialization Vector) for every encryption operation.
-  - Generates an Auth Tag to verify data integrity during decryption.
-  - The `DB_ENCRYPTION_KEY` must be exactly 32 bytes (base64 encoded) for AES-256.
-  
-**Generate a secure encryption key:**
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+*Automatically analyzes the currently connected database and extracts the schema for all collections. Returns collection names, field names, and inferred data types based on sample documents (up to 20 per collection).*
+
+**Response Example:**
+```json
+{
+  "success": true,
+  "message": "Schema extracted successfully",
+  "data": {
+    "schema": {
+      "users": {
+        "_id": "objectId",
+        "email": "string",
+        "password": "string",
+        "createdAt": "date",
+        "updatedAt": "date"
+      },
+      "connections": {
+        "_id": "objectId",
+        "userId": "objectId",
+        "connecteduri": "object",
+        "name": "string"
+      }
+    }
+  }
+}
 ```
 
-### 3. Password Security
-- Passwords are **never** stored in plain text.
+**Supported Field Types:**
+- `string`, `number`, `boolean`
+- `object`, `array`
+- `date`, `objectId`
+- `null`
+### 2. Data Encryption/get-connection-string \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"mongoUri":"mongodb://localhost:27017/mydb","name":"My Local DB"}'
+```
+
+**Connect to Database Example:**
+```bash
+curl -X POST http://localhost:3000/api/connection/connect-to-database \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"connectionId":"675a1b2c3d4e5f6789abcdef"}'
+```
+
+**Disconnect from Database Example:**
+```bash
+curl -X POST http://localhost:3000/api/connection/disconnect-database \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Extract Database Schema Example:**
+```bash
+curl -X POST http://localhost:3000/api/ai/get-mongo-schema \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/jsont.
 - Uses `bcrypt` with salt rounds for hashing before saving to MongoDB.
 
 ## 🧪 Testing with cURL
+- [x] ImAI Query Generation**: Use extracted schemas to generate MongoDB queries from natural language
+- [ ] **Schema Caching**: Cache extracted schemas to improve performance
+- [ ] **Schema Comparison**: Compare schemas across different database environments
+- [ ] **plemented AI-powered schema extraction from connected databases
+- [x] Added automatic type inference for database fields
+- [x] Created AI routes and controller for schema analysis
+- [x] Fixed export issues in mongoConnections utility module
 
 **Login Example:**
 ```bash
