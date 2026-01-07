@@ -172,15 +172,7 @@ insightAI/
 
 ### Database Connections (Protected)
 
-#### 1. Save Connection
-**POST** `/api/connections`
-*Headers:* `Authorization: Bearer <accessToken>`
-```json
-{
-  "mongoUri": "mongodb://user:pass@host:port/db",
-  "name": "Production DB"
-}
-``` String
+#### 1. Save Connection String
 **POST** `/api/connection/get-connection-string`
 *Headers:* `Authorization: Bearer <accessToken>`
 ```json
@@ -245,7 +237,46 @@ insightAI/
 - `object`, `array`
 - `date`, `objectId`
 - `null`
-### 2. Data Encryption/get-connection-string \
+
+## 🔒 Security Implementation
+
+### 1. Token Management
+- **Access Tokens**: Short lifespan (e.g., 15 mins). Used for API access.
+- **Refresh Tokens**: Longer lifespan (e.g., 7 days). Stored in Redis. Used to get new access tokens.
+- **Blacklisting**: When a user logs out, the access token is added to a Redis blacklist until it expires.
+
+### 2. Data Encryption
+- **Algorithm**: AES-256-GCM (Authenticated Encryption).
+- **Storage Format**: MongoDB connection URIs are stored as objects containing:
+  - `encryptedText`: The encrypted URI string
+  - `iv`: Initialization Vector (unique per encryption)
+  - `authTag`: Authentication tag for data integrity verification
+- **Implementation**: 
+  - Uses a unique IV (Initialization Vector) for every encryption operation.
+  - Generates an Auth Tag to verify data integrity during decryption.
+  - The `DB_ENCRYPTION_KEY` must be exactly 32 bytes (base64 encoded) for AES-256.
+  
+**Generate a secure encryption key:**
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+### 3. Password Security
+- Passwords are **never** stored in plain text.
+- Uses `bcrypt` with salt rounds for hashing before saving to MongoDB.
+
+## 🧪 Testing with cURL
+
+**Login Example:**
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password123"}'
+```
+
+**Create Connection Example:**
+```bash
+curl -X POST http://localhost:3000/api/connection/get-connection-string \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"mongoUri":"mongodb://localhost:27017/mydb","name":"My Local DB"}'
@@ -269,45 +300,7 @@ curl -X POST http://localhost:3000/api/connection/disconnect-database \
 ```bash
 curl -X POST http://localhost:3000/api/ai/get-mongo-schema \
   -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/jsont.
-- Uses `bcrypt` with salt rounds for hashing before saving to MongoDB.
-
-## 🧪 Testing with cURL
-- [x] ImAI Query Generation**: Use extracted schemas to generate MongoDB queries from natural language
-- [ ] **Schema Caching**: Cache extracted schemas to improve performance
-- [ ] **Schema Comparison**: Compare schemas across different database environments
-- [ ] **plemented AI-powered schema extraction from connected databases
-- [x] Added automatic type inference for database fields
-- [x] Created AI routes and controller for schema analysis
-- [x] Fixed export issues in mongoConnections utility module
-
-**Login Example:**
-```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","password":"password123"}'
-```
-
-**Create Connection Example:**
-```bash
-curl -X POST http://localhost:3000/api/connections \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"mongoUri":"mongodb://localhost:27017/mydb","name":"My Local DB"}'
-```
-
-**Connect to Database Example:**
-```bash
-curl -X POST http://localhost:3000/api/connections/connect \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"connectionId":"675a1b2c3d4e5f6789abcdef"}'
-```
-
-**Disconnect from Database Example:**
-```bash
-curl -X POST http://localhost:3000/api/connections/disconnect \
-  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+  -H "Content-Type: application/json"
 ```
 
 ## 🎯 Roadmap & TODO
@@ -318,6 +311,10 @@ curl -X POST http://localhost:3000/api/connections/disconnect \
 - [x] Added connect and disconnect endpoints
 - [x] Fixed circular JSON reference in connection response
 - [x] Consistent userId handling in connection Map (using `.toString()`)
+- [x] Implemented AI-powered schema extraction from connected databases
+- [x] Added automatic type inference for database fields
+- [x] Created AI routes and controller for schema analysis
+- [x] Fixed export issues in mongoConnections utility module
 
 ### Critical Fixes
 - [ ] Fix middleware error handling (use `throw ApiError`).
@@ -326,6 +323,9 @@ curl -X POST http://localhost:3000/api/connections/disconnect \
 - [ ] Add input validation for all endpoints.
 
 ### Future Enhancements
+- [ ] **AI Query Generation**: Use extracted schemas to generate MongoDB queries from natural language
+- [ ] **Schema Caching**: Cache extracted schemas to improve performance
+- [ ] **Schema Comparison**: Compare schemas across different database environments
 - [ ] **Input Validation**: Add Joi/Zod for request validation.
 - [ ] **Rate Limiting**: Prevent brute-force attacks.
 - [ ] **Connection Management**: Add endpoints to list and delete saved connections.
