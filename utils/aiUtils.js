@@ -1,3 +1,14 @@
+import { mongoConnections } from "./mongoConnections.js";
+
+const ALLOWED_STAGES = new Set([
+  "$match", "$group", "$sort", "$limit", "$skip", "$project",
+  "$unwind", "$lookup", "$count", "$addFields", "$set"
+]);
+
+const BLOCKED_STAGES = new Set([
+  "$out", "$merge", "$graphLookup", "$currentOp", "$listSessions"
+]);
+
 export function validateMongoPipeline(pipeline) {
   if (!Array.isArray(pipeline)) {
     throw new Error("Pipeline must be an array");

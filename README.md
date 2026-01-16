@@ -1,6 +1,6 @@
 # InsightAI API
 
-A secure, production-ready API that combines user authentication, encrypted database connection management, and AI-powered MongoDB query generation using Google Gemini AI. Built with Express.js, JWT, Redis, and MongoDB.
+A secure, production-ready API that combines user authentication, encrypted database connection management, and AI-powered MongoDB query generation and analysis using Google Gemini AI. Built with Express.js, JWT, Redis, and MongoDB.
 
 ---
 
@@ -10,9 +10,14 @@ A secure, production-ready API that combines user authentication, encrypted data
 1. **Authenticate securely** with JWT-based access and refresh tokens
 2. **Connect to any MongoDB database** with encrypted connection strings
 3. **Query databases using natural language** - AI converts questions into MongoDB aggregation pipelines
-4. **Execute queries safely** with built-in validation and security controls
+4. **Analyze data intelligently** - AI provides insights, statistics, and business recommendations
+5. **Execute queries safely** with built-in validation and security controls
 
-The system uses Google Gemini AI to understand natural language questions and generate optimized MongoDB queries based on the actual database schema.
+The system offers **two AI modes**:
+- **Query Mode**: Generates MongoDB queries and returns raw database results
+- **Inference Mode**: Generates queries, analyzes results, and provides actionable insights with statistics
+
+The system uses Google Gemini AI (gemini-2.5-flash) to understand natural language questions and generate optimized MongoDB queries based on the actual database schema.
 
 ---
 
@@ -393,12 +398,15 @@ Response:
 8. Return AI-generated query and results
 
 **Sample Input/Output:**
+
+**Query Mode - Returns raw database results:**
 ```json
 POST /api/ai/run-ai-query
 Headers: { "Authorization": "Bearer <access_token>" }
 {
   "connectionId": "65a1b2c3d4e5f6g7h8i9j0k1",
-  "question": "What are the top 5 customers by total order value?"
+  "question": "What are the top 5 customers by total order value?",
+  "userSelection": "query"
 }
 
 Response:
@@ -411,17 +419,63 @@ Response:
       "pipeline": [
         { "$group": { "_id": "$userId", "totalSpent": { "$sum": "$total" } } },
         { "$sort": { "totalSpent": -1 } },
-        { "$limit": 5 },
-        { "$lookup": { "from": "users", "localField": "_id", "foreignField": "_id", "as": "user" } }
-      ]
+        { "$limit": 5 }
+      ],
+      "confidence": 0.95,
+      "warnings": []
     },
     "response": [
-      { "_id": "user123", "totalSpent": 5000, "user": [{ "name": "John Doe" }] },
-      { "_id": "user456", "totalSpent": 4500, "user": [{ "name": "Jane Smith" }] }
+      { "_id": "user123", "totalSpent": 5000 },
+      { "_id": "user456", "totalSpent": 4500 },
+      { "_id": "user789", "totalSpent": 3200 }
     ]
   }
 }
 ```
+
+**Inference Mode - Returns AI analysis and insights:**
+```json
+POST /api/ai/run-ai-query
+Headers: { "Authorization": "Bearer <access_token>" }
+{
+  "connectionId": "65a1b2c3d4e5f6g7h8i9j0k1",
+  "question": "How many bookings do we have?",
+  "userSelection": "inference"
+}
+
+Response:
+{
+  "statusCode": 200,
+  "message": "Analysis completed successfully",
+  "data": {
+    "analysis": {
+      "answer": "There are 15 bookings recorded in total.",
+      "insights": [
+        "The current volume of 15 bookings provides a baseline for evaluating operational activity.",
+        "This count represents all bookings without any filters or date ranges applied.",
+        "Tracking this metric over time can help identify growth trends."
+      ],
+      "statistics": {
+        "totalCount": 15,
+        "queryExecutionTime": "45ms"
+      },
+      "confidence": 0.98,
+      "dataQuality": "excellent",
+      "limitations": [
+        "No temporal analysis available without date fields",
+        "Status breakdown not included in this query"
+      ]
+    }
+  }
+}
+```
+
+**Parameters:**
+- `connectionId` (required): User's connection identifier
+- `question` (required): Natural language question
+- `userSelection` (required): Either `"query"` or `"inference"`
+  - `"query"` - Returns raw MongoDB query results
+  - `"inference"` - Returns AI-analyzed insights and statistics
 
 ---
 
@@ -515,7 +569,8 @@ User logs in → Compare plaintext password with hash → Return boolean
 
 **Routes:**
 - `POST /api/ai/get-mongo-schema` - Extract database schema (protected)
-- `POST /api/ai/run-ai-query` - Natural language to MongoDB query (protected) *(Note: Route not yet added)*
+- `POST /api/ai/run-ai-query` - Natural language to MongoDB query with dual modes (protected)
+  - Supports both "query" mode (raw results) and "inference" mode (AI analysis)
 
 ---
 
@@ -585,7 +640,8 @@ ApiResponse.unauthorized(res, "Token expired");
 **What it contains:**
 - `mongoConnections`: Map storing active connections (userId → connection)
 - `inferType(value)`: Detects data types from MongoDB documents
-- `systemPrompt`: Detailed instructions for Gemini AI to generate MongoDB queries
+- `systemPrompt`: Detailed instructions for Gemini AI to generate MongoDB queries (query mode)
+- `inferencePrompt`: Instructions for Gemini AI to analyze data and provide insights (inference mode)
 
 **How inferType works:**
 ```javascript
@@ -596,12 +652,21 @@ inferType(ObjectId("...")) // "objectId"
 inferType("text") // "string"
 ```
 
-**System Prompt Structure:**
+**System Prompt Structure (Query Mode):**
 - Instructs AI to act as MongoDB query compiler
 - Prohibits hallucination and guessing
 - Enforces read-only operations
 - Defines allowed/blocked MongoDB stages
-- Requires valid JSON output only
+- Requires pure JSON output (no markdown code blocks)
+- Ignores password fields for security
+
+**Inference Prompt Structure (Inference Mode):**
+- Instructs AI to act as Data Analyst
+- Analyzes query results and provides insights
+- Generates statistics and business recommendations
+- Assesses data quality and confidence
+- Provides natural language explanations
+- Requires pure JSON output with specific structure
 
 ---
 
@@ -940,7 +1005,10 @@ MongoDB Pipeline → Validation → Execution → Results
 4. **Active connections** are stored in memory per user
 5. **AI queries** are read-only and validated before execution
 6. **Schema extraction** samples 20 documents per collection
-7. All routes except `/health` and auth endpoints require authentication
+7. **Dual AI modes** available: query (raw results) and inference (analyzed insights)
+8. **AI model** uses Google Gemini 2.5 Flash for fast, accurate responses
+9. **JSON parsing** automatically handles markdown code blocks from AI responses
+10. All routes except `/health` and auth endpoints require authentication
 
 ---
 
@@ -950,25 +1018,30 @@ MongoDB Pipeline → Validation → Execution → Results
 - Use strong, randomly generated secrets for JWT
 - Rotate encryption keys periodically
 - Monitor Redis for memory usage
-- Implement rate limiting for production
+- Implement rate limiting for production (especially AI endpoints)
 - Use HTTPS in production
 - Validate all user inputs
 - Keep dependencies updated
+- Password fields are automatically excluded from schema and queries
+- Blocked MongoDB stages prevent data modification ($out, $merge, etc.)
 
 ---
 
 ## 📚 Future Enhancements
 
-- [ ] Add route for `runAiQuery` in `ai.routes.js`
-- [ ] Implement rate limiting
-- [ ] Add request logging
-- [ ] Support multiple simultaneous database connections
-- [ ] Add query result caching
-- [ ] Implement query history
+- [ ] Implement rate limiting for AI endpoints
+- [ ] Add request logging and monitoring
+- [ ] Support multiple simultaneous database connections per user
+- [ ] Add query result caching with Redis
+- [ ] Implement query history and favorites
 - [ ] Add database connection health checks
 - [ ] Support for other database types (PostgreSQL, MySQL)
-- [ ] Advanced AI query optimization
-- [ ] Query performance metrics
+- [ ] Advanced AI query optimization suggestions
+- [ ] Query performance metrics and analytics
+- [ ] Export analysis results to PDF/Excel
+- [ ] Natural language explanations for complex queries
+- [ ] Interactive query builder UI
+- [ ] Scheduled queries and alerts
 
 ---
 
