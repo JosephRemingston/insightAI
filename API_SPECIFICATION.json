@@ -1,0 +1,577 @@
+{
+  "apiName": "InsightAI API",
+  "version": "1.0.0",
+  "baseUrl": "http://localhost:3000",
+  "description": "AI-powered MongoDB database query and analysis API with JWT authentication",
+  "authentication": {
+    "type": "JWT Bearer Token",
+    "headerFormat": {
+      "Authorization": "Bearer <access_token>"
+    },
+    "tokenExpiry": {
+      "accessToken": "15 minutes",
+      "refreshToken": "7 days"
+    }
+  },
+  "commonHeaders": {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer <access_token>"
+  },
+  "responseFormat": {
+    "success": {
+      "statusCode": 200,
+      "message": "string",
+      "data": "object"
+    },
+    "error": {
+      "statusCode": 400,
+      "message": "string",
+      "error": "object"
+    }
+  },
+  "endpoints": [
+    {
+      "category": "Health Check",
+      "path": "/health",
+      "method": "GET",
+      "requiresAuth": false,
+      "description": "Check if API is running",
+      "headers": {
+        "required": {},
+        "optional": {}
+      },
+      "requestBody": null,
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "API is working",
+        "data": {
+          "status": "UP",
+          "timestamp": "2026-01-17T12:00:00.000Z",
+          "uptime": 3600
+        }
+      },
+      "responseError": null,
+      "example": {
+        "curl": "curl http://localhost:3000/health",
+        "javascript": "fetch('http://localhost:3000/health')"
+      }
+    },
+    {
+      "category": "Authentication",
+      "path": "/api/auth/signup",
+      "method": "POST",
+      "requiresAuth": false,
+      "description": "Register a new user account",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json"
+        },
+        "optional": {}
+      },
+      "requestBody": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 6,
+            "example": "securePassword123"
+          }
+        }
+      },
+      "responseSuccess": {
+        "statusCode": 201,
+        "message": "User registered successfully",
+        "data": {
+          "user": {
+            "_id": "65a1b2c3d4e5f6g7h8i9j0k1",
+            "email": "user@example.com",
+            "createdAt": "2026-01-17T12:00:00.000Z"
+          },
+          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "responseError": {
+        "statusCode": 400,
+        "message": "Email already exists",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/auth/signup -H 'Content-Type: application/json' -d '{\"email\":\"user@example.com\",\"password\":\"securePassword123\"}'",
+        "javascript": "fetch('http://localhost:3000/api/auth/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'user@example.com', password: 'securePassword123' }) })"
+      }
+    },
+    {
+      "category": "Authentication",
+      "path": "/api/auth/login",
+      "method": "POST",
+      "requiresAuth": false,
+      "description": "Login with existing account",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json"
+        },
+        "optional": {}
+      },
+      "requestBody": {
+        "type": "object",
+        "required": ["email", "password"],
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "password": {
+            "type": "string",
+            "example": "securePassword123"
+          }
+        }
+      },
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "Login successful",
+        "data": {
+          "user": {
+            "_id": "65a1b2c3d4e5f6g7h8i9j0k1",
+            "email": "user@example.com"
+          },
+          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "responseError": {
+        "statusCode": 401,
+        "message": "Invalid credentials",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/auth/login -H 'Content-Type: application/json' -d '{\"email\":\"user@example.com\",\"password\":\"securePassword123\"}'",
+        "javascript": "fetch('http://localhost:3000/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: 'user@example.com', password: 'securePassword123' }) })"
+      }
+    },
+    {
+      "category": "Authentication",
+      "path": "/api/auth/refresh",
+      "method": "POST",
+      "requiresAuth": false,
+      "description": "Refresh access token using refresh token",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json"
+        },
+        "optional": {}
+      },
+      "requestBody": {
+        "type": "object",
+        "required": ["refreshToken"],
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+          }
+        }
+      },
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "Token refreshed successfully",
+        "data": {
+          "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+          "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+        }
+      },
+      "responseError": {
+        "statusCode": 401,
+        "message": "Invalid refresh token",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/auth/refresh -H 'Content-Type: application/json' -d '{\"refreshToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\"}'",
+        "javascript": "fetch('http://localhost:3000/api/auth/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' }) })"
+      }
+    },
+    {
+      "category": "Authentication",
+      "path": "/api/auth/logout",
+      "method": "POST",
+      "requiresAuth": true,
+      "description": "Logout and invalidate tokens",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <access_token>"
+        },
+        "optional": {}
+      },
+      "requestBody": null,
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "Logout successful",
+        "data": {}
+      },
+      "responseError": {
+        "statusCode": 401,
+        "message": "Unauthorized",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/auth/logout -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...'",
+        "javascript": "fetch('http://localhost:3000/api/auth/logout', { method: 'POST', headers: { 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' } })"
+      }
+    },
+    {
+      "category": "Database Connection",
+      "path": "/api/connection/get-connection-string",
+      "method": "POST",
+      "requiresAuth": true,
+      "description": "Save encrypted MongoDB connection string",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <access_token>"
+        },
+        "optional": {}
+      },
+      "requestBody": {
+        "type": "object",
+        "required": ["uri", "name"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "mongodb-uri",
+            "example": "mongodb+srv://username:password@cluster.mongodb.net/database"
+          },
+          "name": {
+            "type": "string",
+            "example": "Production Database"
+          }
+        }
+      },
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "Connection string saved successfully",
+        "data": {
+          "connectionId": "65a1b2c3d4e5f6g7h8i9j0k1",
+          "name": "Production Database"
+        }
+      },
+      "responseError": {
+        "statusCode": 400,
+        "message": "Invalid MongoDB URI",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/connection/get-connection-string -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"uri\":\"mongodb+srv://user:pass@cluster.mongodb.net/db\",\"name\":\"My DB\"}'",
+        "javascript": "fetch('http://localhost:3000/api/connection/get-connection-string', { method: 'POST', headers: { 'Authorization': 'Bearer <token>', 'Content-Type': 'application/json' }, body: JSON.stringify({ uri: 'mongodb+srv://...', name: 'My DB' }) })"
+      }
+    },
+    {
+      "category": "Database Connection",
+      "path": "/api/connection/connect-to-database",
+      "method": "POST",
+      "requiresAuth": true,
+      "description": "Establish connection to saved MongoDB database",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <access_token>"
+        },
+        "optional": {}
+      },
+      "requestBody": {
+        "type": "object",
+        "required": ["connectionId"],
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "example": "65a1b2c3d4e5f6g7h8i9j0k1"
+          }
+        }
+      },
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "Connected to database successfully",
+        "data": {
+          "connectionId": "65a1b2c3d4e5f6g7h8i9j0k1",
+          "status": "connected"
+        }
+      },
+      "responseError": {
+        "statusCode": 400,
+        "message": "Failed to connect to database",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/connection/connect-to-database -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"connectionId\":\"65a1b2c3d4e5f6g7h8i9j0k1\"}'",
+        "javascript": "fetch('http://localhost:3000/api/connection/connect-to-database', { method: 'POST', headers: { 'Authorization': 'Bearer <token>', 'Content-Type': 'application/json' }, body: JSON.stringify({ connectionId: '65a1b2c3d4e5f6g7h8i9j0k1' }) })"
+      }
+    },
+    {
+      "category": "Database Connection",
+      "path": "/api/connection/disconnect-database",
+      "method": "POST",
+      "requiresAuth": true,
+      "description": "Disconnect from active MongoDB database",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <access_token>"
+        },
+        "optional": {}
+      },
+      "requestBody": null,
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "Disconnected from database successfully",
+        "data": {}
+      },
+      "responseError": {
+        "statusCode": 400,
+        "message": "No active connection found",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/connection/disconnect-database -H 'Authorization: Bearer <token>'",
+        "javascript": "fetch('http://localhost:3000/api/connection/disconnect-database', { method: 'POST', headers: { 'Authorization': 'Bearer <token>' } })"
+      }
+    },
+    {
+      "category": "AI Features",
+      "path": "/api/ai/get-mongo-schema",
+      "method": "POST",
+      "requiresAuth": true,
+      "description": "Extract and analyze database schema from connected MongoDB",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <access_token>"
+        },
+        "optional": {}
+      },
+      "requestBody": null,
+      "responseSuccess": {
+        "statusCode": 200,
+        "message": "Schema extracted successfully",
+        "data": {
+          "schema": {
+            "users": {
+              "_id": "objectId",
+              "email": "string",
+              "password": "string",
+              "createdAt": "date"
+            },
+            "orders": {
+              "_id": "objectId",
+              "userId": "objectId",
+              "total": "number",
+              "status": "string",
+              "items": "array"
+            }
+          }
+        }
+      },
+      "responseError": {
+        "statusCode": 400,
+        "message": "No active connection found",
+        "error": {}
+      },
+      "example": {
+        "curl": "curl -X POST http://localhost:3000/api/ai/get-mongo-schema -H 'Authorization: Bearer <token>'",
+        "javascript": "fetch('http://localhost:3000/api/ai/get-mongo-schema', { method: 'POST', headers: { 'Authorization': 'Bearer <token>' } })"
+      }
+    },
+    {
+      "category": "AI Features",
+      "path": "/api/ai/run-ai-query",
+      "method": "POST",
+      "requiresAuth": true,
+      "description": "Execute AI-powered natural language database query with dual modes: 'query' returns raw results, 'inference' returns analyzed insights",
+      "headers": {
+        "required": {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer <access_token>"
+        },
+        "optional": {}
+      },
+      "requestBody": {
+        "type": "object",
+        "required": ["connectionId", "question", "userSelection"],
+        "properties": {
+          "connectionId": {
+            "type": "string",
+            "example": "65a1b2c3d4e5f6g7h8i9j0k1",
+            "description": "ID of the active database connection"
+          },
+          "question": {
+            "type": "string",
+            "example": "What are the top 5 products by sales?",
+            "description": "Natural language question about the data"
+          },
+          "userSelection": {
+            "type": "string",
+            "enum": ["query", "inference"],
+            "example": "query",
+            "description": "Mode: 'query' for raw data, 'inference' for AI analysis"
+          }
+        }
+      },
+      "responseSuccess": {
+        "query_mode": {
+          "statusCode": 200,
+          "message": "Query executed successfully",
+          "data": {
+            "aiQuery": {
+              "collection": "orders",
+              "pipeline": [
+                { "$group": { "_id": "$productId", "totalSales": { "$sum": "$quantity" } } },
+                { "$sort": { "totalSales": -1 } },
+                { "$limit": 5 }
+              ],
+              "confidence": 0.95,
+              "warnings": []
+            },
+            "response": [
+              { "_id": "product123", "totalSales": 5000 },
+              { "_id": "product456", "totalSales": 4500 }
+            ]
+          }
+        },
+        "inference_mode": {
+          "statusCode": 200,
+          "message": "Analysis completed successfully",
+          "data": {
+            "analysis": {
+              "answer": "There are 15 bookings recorded in total.",
+              "insights": [
+                "The current volume of 15 bookings provides a baseline for evaluating operational activity.",
+                "This count represents all bookings without any filters or date ranges applied.",
+                "Tracking this metric over time can help identify growth trends."
+              ],
+              "statistics": {
+                "totalCount": 15,
+                "queryExecutionTime": "45ms"
+              },
+              "confidence": 0.98,
+              "dataQuality": "excellent",
+              "limitations": [
+                "No temporal analysis available without date fields",
+                "Status breakdown not included in this query"
+              ]
+            }
+          }
+        }
+      },
+      "responseError": {
+        "statusCode": 400,
+        "message": "Invalid user selection. Use 'query' or 'inference'",
+        "error": {}
+      },
+      "example": {
+        "curl_query_mode": "curl -X POST http://localhost:3000/api/ai/run-ai-query -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"connectionId\":\"65a1b2c3d4e5f6g7h8i9j0k1\",\"question\":\"How many users?\",\"userSelection\":\"query\"}'",
+        "curl_inference_mode": "curl -X POST http://localhost:3000/api/ai/run-ai-query -H 'Authorization: Bearer <token>' -H 'Content-Type: application/json' -d '{\"connectionId\":\"65a1b2c3d4e5f6g7h8i9j0k1\",\"question\":\"How many users?\",\"userSelection\":\"inference\"}'",
+        "javascript": "fetch('http://localhost:3000/api/ai/run-ai-query', { method: 'POST', headers: { 'Authorization': 'Bearer <token>', 'Content-Type': 'application/json' }, body: JSON.stringify({ connectionId: '65a1b2c3d4e5f6g7h8i9j0k1', question: 'How many users?', userSelection: 'query' }) })"
+      }
+    }
+  ],
+  "errorCodes": {
+    "200": "Success",
+    "201": "Created",
+    "400": "Bad Request - Invalid input",
+    "401": "Unauthorized - Invalid or missing token",
+    "403": "Forbidden - Token blacklisted",
+    "404": "Not Found",
+    "500": "Internal Server Error"
+  },
+  "workflowExample": {
+    "description": "Complete workflow from signup to AI query",
+    "steps": [
+      {
+        "step": 1,
+        "action": "Sign up",
+        "endpoint": "POST /api/auth/signup",
+        "input": { "email": "user@example.com", "password": "password123" },
+        "output": "Receive accessToken and refreshToken"
+      },
+      {
+        "step": 2,
+        "action": "Save database connection",
+        "endpoint": "POST /api/connection/get-connection-string",
+        "input": { "uri": "mongodb+srv://...", "name": "My Database" },
+        "output": "Receive connectionId"
+      },
+      {
+        "step": 3,
+        "action": "Connect to database",
+        "endpoint": "POST /api/connection/connect-to-database",
+        "input": { "connectionId": "<connectionId>" },
+        "output": "Connection established"
+      },
+      {
+        "step": 4,
+        "action": "Get database schema (optional)",
+        "endpoint": "POST /api/ai/get-mongo-schema",
+        "input": null,
+        "output": "Receive database schema structure"
+      },
+      {
+        "step": 5,
+        "action": "Run AI query",
+        "endpoint": "POST /api/ai/run-ai-query",
+        "input": { "connectionId": "<connectionId>", "question": "How many users?", "userSelection": "inference" },
+        "output": "Receive AI analysis with insights"
+      }
+    ]
+  },
+  "frontendRequirements": {
+    "stateManagement": {
+      "tokens": "Store accessToken and refreshToken (localStorage or secure cookie)",
+      "user": "Store user information",
+      "connection": "Store active connectionId",
+      "schema": "Cache database schema for reference"
+    },
+    "pages": [
+      {
+        "name": "Login/Signup",
+        "features": ["Email/password form", "Toggle between login/signup", "Token storage on success"]
+      },
+      {
+        "name": "Dashboard",
+        "features": ["Display user info", "Logout button", "Navigation to connections"]
+      },
+      {
+        "name": "Database Connections",
+        "features": ["List saved connections", "Add new connection form", "Connect/disconnect buttons", "Delete connection"]
+      },
+      {
+        "name": "AI Query Interface",
+        "features": ["Natural language input field", "Mode selector (Query/Inference)", "Submit button", "Results display (table for query mode, cards for inference mode)", "Schema viewer"]
+      },
+      {
+        "name": "Schema Viewer",
+        "features": ["Tree view of collections and fields", "Field types display", "Refresh schema button"]
+      }
+    ],
+    "components": [
+      "AuthForm - Login/Signup form",
+      "ProtectedRoute - Route wrapper with auth check",
+      "ConnectionCard - Display connection info",
+      "QueryInput - Natural language input",
+      "ResultsTable - Display query results",
+      "InsightsCard - Display AI analysis",
+      "SchemaTree - Display database schema",
+      "Header - Navigation and user menu",
+      "ErrorBoundary - Error handling"
+    ],
+    "utilities": [
+      "api.js - Axios/fetch wrapper with auth headers",
+      "auth.js - Token management utilities",
+      "validators.js - Input validation functions"
+    ]
+  }
+}

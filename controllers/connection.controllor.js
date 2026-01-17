@@ -31,6 +31,22 @@ export var getMongoUri = asyncHandler(async (req, res) => {
     });
 });
 
+export var getConnectionByUser = asyncHandler(async (req , res) => {
+    var userId = req.user._id;
+
+    if(!userId){
+        throw ApiError.badRequest("User ID is required");
+    }
+    var connections = await Connection.find({ userId: userId });
+
+    if(!connections){
+        throw ApiError.notFound("No connections found for the user");
+    }
+
+    return ApiResponse.success(res , "Connections fetched successfully" , {
+        connections: connections
+    })
+})
 export var connectToDatabase = asyncHandler(async (req , res) => {
     var {connectionId} = req.body
     var userId = req.user._id;
