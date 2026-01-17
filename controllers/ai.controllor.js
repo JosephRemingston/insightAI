@@ -82,8 +82,9 @@ export var runAiQuery = asyncHandler(async (req, res) => {
 
   const schema = {};
 
+
   for (const col of collections) {
-    const docs = await db.collection(col.name).find({}).limit(20).toArray();
+    const docs = await db.collection(col.name).find({}).toArray();
     const fields = {};
 
     for (const doc of docs) {
@@ -96,20 +97,13 @@ export var runAiQuery = asyncHandler(async (req, res) => {
     schema[col.name] = fields;
   }
 
-  // 3️⃣ Call Gemini
+  // 3️⃣ Call Gemini to generate the query (always use systemPrompt first)
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-  var prompt = "";
-  var fullPrompt = "";
-
-  if(userSelection === "query"){
-    prompt = `Schema: ${JSON.stringify(schema, null, 2)} User Question: ${question}`;
-    fullPrompt = `${systemPrompt}\n\n${prompt}`;
-  }
-  else if(userSelection === "inference"){
-    prompt = `Schema: ${JSON.stringify(schema, null, 2)} User Question: ${question}`;
-    fullPrompt = `${inferencePrompt}\n\n${prompt}`;
-  }
+  
+  // Generate the MongoDB query using systemPrompt (for both query and inference modes)
+  const prompt = `Schema: ${JSON.stringify(schema, null, 2)} User Question: ${question}`;
+  const fullPrompt = `${systemPrompt}\n\n${prompt}`;
   const aiOutput = await model.generateContent(fullPrompt);
 
   console.log("AI Raw Response:", aiOutput.response.text());
@@ -157,12 +151,51 @@ export var runAiQuery = asyncHandler(async (req, res) => {
     });
   }
   else if(userSelection === "inference"){
-    if (!aiResponse.answer) {
-      throw ApiError.badRequest("AI response missing required fields");
+    // First, we need to get the data using the query pipeline
+    if (!aiResponse.collection || !aiResponse.pipeline) {
+      throw ApiError.badRequest("AI response missing collection or pipeline");
+    }
+
+    // Execute the query to get actual data
+    const queryResults = await executeMongoQuery({
+      connectionId: userId.toString(),
+      collection: aiResponse.collection,
+      pipeline: aiResponse.pipeline,
+      schema,
+    });
+
+    // Now ask AI to analyze the ACTUAL data
+    const analysisPrompt = `
+      Schema: ${JSON.stringify(schema, null, 2)}
+
+      User Question: ${question}
+
+      Query Results: ${JSON.stringify(queryResults, null, 2)}
+
+      Collection: ${aiResponse.collection}
+      `;
+
+    const analysisModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+    const analysisOutput = await analysisModel.generateContent(`${inferencePrompt}\n\n${analysisPrompt}`);
+    
+    const cleanedAnalysisResponse = cleanJsonResponse(analysisOutput.response.text());
+    console.log("Cleaned Analysis Response:", cleanedAnalysisResponse);
+    
+    let finalAnalysis;
+    try {
+      finalAnalysis = JSON.parse(cleanedAnalysisResponse);
+    } catch (err) {
+      console.error("JSON Parse Error:", err.message);
+      console.error("Analysis Response Text:", analysisOutput.response.text());
+      throw ApiError.internal("AI returned invalid JSON for analysis: " + analysisOutput.response.text().substring(0, 200));
+    }
+
+    if (!finalAnalysis.answer) {
+      throw ApiError.badRequest("AI analysis response missing required fields");
     }
 
     return ApiResponse.success(res, "Analysis completed successfully", {
-      analysis: aiResponse,
+      analysis: finalAnalysis,
     });
   }
 });

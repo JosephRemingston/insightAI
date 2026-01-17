@@ -16,7 +16,7 @@ export var getMongoUri = asyncHandler(async (req, res) => {
     var hashedMongoUri = encryptString(mongoUri); 
 
     if (mongoConnections.has(userId.toString())) {
-        throw ApiError.conflict("Database already connected");
+        throw ApiError.badRequest("Database already connected");
     }
 
 
