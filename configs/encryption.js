@@ -1,8 +1,4 @@
 import crypto from "crypto";
-import dotenv from "dotenv";
-
-dotenv.config({path: "../.env"});
-
 
 const ALGORITHM = "aes-256-gcm";
 

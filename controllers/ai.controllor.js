@@ -6,9 +6,6 @@ import { executeMongoQuery } from "../utils/aiUtils.js";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Connection } from "../models/connection.models.js";
 import { decryptString } from "../configs/encryption.js";
-import dotenv from "dotenv";
-
-dotenv.config({path: "./.env"});
 
 async function getResolvedMongoConnection(userId, connectionId){
     var savedConnection = await Connection.findOne({ _id: connectionId, userId: userId });

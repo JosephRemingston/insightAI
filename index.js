@@ -1,13 +1,11 @@
+import 'dotenv/config';
 import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
 import ApiResponse from "./utils/ApiResponse.js";
 import authRoutes from "./routes/auth.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import connectionRoutes from "./routes/connection.routes.js";
 import connectDB from "./configs/database.js";
-
-dotenv.config();
 
 
 var app = express();

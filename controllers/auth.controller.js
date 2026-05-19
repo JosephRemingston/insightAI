@@ -2,6 +2,7 @@ import asyncHandler from "../utils/asyncHandler.js";
 import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { generateAccessToken , generateRefreshToken , storeRefreshToken , deleteRefreshToken , blacklistToken , verifyRefreshToken , getRefreshToken, verifyAccessToken} from "../configs/jwt.js";
+import { isRedisAvailable } from "../configs/redis.js";
 import { User } from "../models/user.models.js";
 
 
@@ -72,9 +73,11 @@ export const refresh = asyncHandler(async (req , res) => {
     throw ApiError.badRequest("Invalid refresh token");
   }
 
-  var storedRefreshToken = await getRefreshToken(decoded.userId);
-  if(storedRefreshToken !== refreshToken){
-    throw ApiError.badRequest("Invalid refresh token");
+  if (isRedisAvailable()) {
+    var storedRefreshToken = await getRefreshToken(decoded.userId);
+    if(storedRefreshToken !== refreshToken){
+      throw ApiError.badRequest("Invalid refresh token");
+    }
   }
 
   var newAccessToken = generateAccessToken(decoded.userId);
@@ -95,12 +98,14 @@ export const logout = asyncHandler(async (req , res) => {
   // Calculate token expiry for blacklisting
   var decoded = verifyAccessToken(token);
   var accessTokenExpiry = Math.floor((decoded.exp * 1000 - Date.now()) / 1000);
-  
-  // Blacklist access token
-  await blacklistToken(token , accessTokenExpiry);
 
-  // Delete refresh token using userId from middleware
-  await deleteRefreshToken(req.user);
+  if (isRedisAvailable()) {
+    // Blacklist access token
+    await blacklistToken(token , accessTokenExpiry);
+
+    // Delete refresh token using userId from middleware
+    await deleteRefreshToken(req.user);
+  }
 
   return ApiResponse.success(res , "Logged out successfully");
 })
