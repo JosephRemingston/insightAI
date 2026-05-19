@@ -3,10 +3,14 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+console.log("host" , process.env.REDIS_HOST);
+console.log("port" , process.env.REDIS_PORT);
 // Support both localhost and production Redis setups
 const redisConfig = {
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
+  host: process.env.REDIS_HOST,
+  port: parseInt(process.env.REDIS_PORT),
+
+  tls : {},
   
   // Retry strategy
   retryStrategy(times) {
