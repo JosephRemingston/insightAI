@@ -4,6 +4,7 @@ import ApiResponse from "../utils/ApiResponse.js";
 import { Connection } from "../models/connection.models.js";
 import { encryptString , decryptString } from "../configs/encryption.js";
 import { closeMongoConnection, getOrCreateMongoConnection } from "../utils/mongoConnections.js";
+import { mapMongoConnectionError, validateMongoUri } from "../utils/validateMongoUri.js";
 
 export var getMongoUri = asyncHandler(async (req, res) => {
     var {mongoUri, name} = req.body;
@@ -13,7 +14,8 @@ export var getMongoUri = asyncHandler(async (req, res) => {
         throw ApiError.badRequest("Mongo URI and name are required");
     }
 
-    var hashedMongoUri = encryptString(mongoUri);
+    var validatedMongoUri = validateMongoUri(mongoUri);
+    var hashedMongoUri = encryptString(validatedMongoUri);
 
     var createdConnection = await Connection.create({
         userId: userId,
@@ -59,8 +61,16 @@ export var connectToDatabase = asyncHandler(async (req , res) => {
     }
 
     var decryptedUri = decryptString(connectionUri.connecteduri);
-    var connection = await getOrCreateMongoConnection(connectionId.toString(), decryptedUri);
-    await connection.db.admin().ping();
+    var connection;
+
+    console.log(decryptedUri);
+    try {
+        connection = await getOrCreateMongoConnection(connectionId.toString(), decryptedUri);
+        await connection.db.admin().ping();
+    } catch (error) {
+        throw mapMongoConnectionError(error);
+    }
+
     return ApiResponse.success(res , "Connected to database successfully" , {
         connectionName: connectionUri.name,
         status: connection.readyState === 1 ? 'connected' : 'disconnected',
