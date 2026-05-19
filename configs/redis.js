@@ -7,16 +7,6 @@ dotenv.config();
 const redisConfig = {
   host: process.env.REDIS_HOST || 'localhost',
   port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD || undefined,
-  
-  // Production-ready retry configuration
-  maxRetriesPerRequest: 3,  // Limit retries per request (prevents hanging)
-  enableReadyCheck: false,  // Disable ready check in clusters
-  enableOfflineQueue: true, // Queue commands when offline
-  
-  // Connection timeout settings
-  connectTimeout: 10000,    // 10 seconds to connect
-  commandTimeout: 5000,     // 5 seconds per command
   
   // Retry strategy
   retryStrategy(times) {
