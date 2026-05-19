@@ -1,4 +1,9 @@
+import mongoose from "mongoose";
+
 var mongoConnections = new Map();
+
+const CONNECTION_TTL_MS = 5 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = 60 * 1000;
 
 function inferType(value){
     if (value === null) return "null";
@@ -7,6 +12,68 @@ function inferType(value){
     if (value instanceof Object && value._bsontype === "ObjectID") return "objectId";
     return typeof value;
 }
+
+async function createMongoConnection(uri){
+    return await mongoose.createConnection(uri).asPromise();
+}
+
+async function getOrCreateMongoConnection(connectionKey, uri){
+    var existingConnection = mongoConnections.get(connectionKey);
+
+    if (existingConnection && existingConnection.connection.readyState === 1) {
+        existingConnection.lastUsedAt = Date.now();
+        return existingConnection.connection;
+    }
+
+    if (existingConnection && existingConnection.connection.readyState !== 1) {
+        mongoConnections.delete(connectionKey);
+    }
+
+    var connection = await createMongoConnection(uri);
+    mongoConnections.set(connectionKey, {
+        connection,
+        lastUsedAt: Date.now()
+    });
+
+    return connection;
+}
+
+async function closeMongoConnection(connectionKey){
+    var existingConnection = mongoConnections.get(connectionKey);
+
+    if (!existingConnection) {
+        return false;
+    }
+
+    await existingConnection.connection.close();
+    mongoConnections.delete(connectionKey);
+    return true;
+}
+
+async function cleanupIdleConnections(){
+    var now = Date.now();
+
+    for (const [connectionKey, connectionEntry] of mongoConnections.entries()) {
+        var isConnectionActive = connectionEntry.connection.readyState === 1;
+        var isConnectionIdle = now - connectionEntry.lastUsedAt > CONNECTION_TTL_MS;
+
+        if (!isConnectionActive || isConnectionIdle) {
+            try {
+                await connectionEntry.connection.close();
+            } catch (error) {
+                console.error("MongoDB idle connection cleanup failed:", error.message);
+            } finally {
+                mongoConnections.delete(connectionKey);
+            }
+        }
+    }
+}
+
+setInterval(() => {
+    cleanupIdleConnections().catch((error) => {
+        console.error("MongoDB connection cleanup error:", error.message);
+    });
+}, CLEANUP_INTERVAL_MS).unref();
 
 var systemPrompt = 
 
@@ -578,4 +645,11 @@ END OF SYSTEM PROMPT
 `
 
 export default mongoConnections;
-export { mongoConnections , inferType , systemPrompt, inferencePrompt};
+export {
+    mongoConnections,
+    inferType,
+    systemPrompt,
+    inferencePrompt,
+    getOrCreateMongoConnection,
+    closeMongoConnection
+};

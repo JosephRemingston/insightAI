@@ -1,5 +1,3 @@
-import { mongoConnections } from "./mongoConnections.js";
-
 const ALLOWED_STAGES = new Set([
   "$match", "$group", "$sort", "$limit", "$skip", "$project",
   "$unwind", "$lookup", "$count", "$addFields", "$set"
@@ -39,26 +37,20 @@ export function validateCollection(collection, schema) {
   }
 }
 
-export async function executeMongoQuery({connectionId, collection, pipeline, schema}) {
-
-    var currentConnection = mongoConnections.get(connectionId);
-
-    if(!currentConnection){
-        throw new Error("No active connection found. Please connect to a database first.");
-    }
+export async function executeMongoQuery({connection, collection, pipeline, schema}) {
 
     if(!collection || !pipeline){
         throw new Error("Collection and pipeline are required.");
     }
 
-    if(!currentConnection){
-        throw new Error("No active connection found. Please connect to a database first.");
+    if(!connection){
+        throw new Error("No database connection available.");
     }
 
     validateCollection(collection , schema);
     validateMongoPipeline(pipeline);
 
-    var response = await currentConnection.db
+    var response = await connection.db
         .collection(collection)
         .aggregate(pipeline , {allowDiskUse : false})
         .toArray();

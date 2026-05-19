@@ -1,0 +1,600 @@
+{
+  "info": {
+    "_postman_id": "4ecf9420-0eea-4c0d-b13f-bbc79aa4f0b8",
+    "name": "InsightAI API",
+    "description": "Postman collection for the InsightAI API. Run requests in order for the full auth, connection, schema, AI query, token refresh, and logout flow.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "email",
+      "value": "insightai.test@example.com"
+    },
+    {
+      "key": "password",
+      "value": "SecurePass123!"
+    },
+    {
+      "key": "mongoUri",
+      "value": "mongodb+srv://username:password@cluster.mongodb.net/sample_mflix"
+    },
+    {
+      "key": "connectionName",
+      "value": "Sample MongoDB"
+    },
+    {
+      "key": "question",
+      "value": "Show me the top 5 documents from the most relevant collection"
+    },
+    {
+      "key": "accessToken",
+      "value": ""
+    },
+    {
+      "key": "refreshToken",
+      "value": ""
+    },
+    {
+      "key": "connectionId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "GET /health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "pm.test('Health response contains UP status', function () {",
+                  "    pm.expect(json.data.status).to.eql('UP');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "POST /api/auth/signup",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Signup returns success or duplicate-user error', function () {",
+                  "    pm.expect([200, 400]).to.include(pm.response.code);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "signup"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Login status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "}",
+                  "if (json.data && json.data.refreshToken) {",
+                  "    pm.collectionVariables.set('refreshToken', json.data.refreshToken);",
+                  "}",
+                  "",
+                  "pm.test('Access token captured', function () {",
+                  "    pm.expect(pm.collectionVariables.get('accessToken')).to.not.eql('');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "login"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/refresh",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Refresh status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.accessToken) {",
+                  "    pm.collectionVariables.set('accessToken', json.data.accessToken);",
+                  "}",
+                  "",
+                  "pm.test('Refreshed access token captured', function () {",
+                  "    pm.expect(pm.collectionVariables.get('accessToken')).to.not.eql('');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "refresh"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/auth/logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logout status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "logout"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Connections",
+      "item": [
+        {
+          "name": "POST /api/connection/get-connection-string",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Save connection status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "if (json.data && json.data.connection && json.data.connection._id) {",
+                  "    pm.collectionVariables.set('connectionId', json.data.connection._id);",
+                  "}",
+                  "",
+                  "pm.test('Connection ID captured', function () {",
+                  "    pm.expect(pm.collectionVariables.get('connectionId')).to.not.eql('');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"mongoUri\": \"{{mongoUri}}\",\n  \"name\": \"{{connectionName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/connection/get-connection-string",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "connection",
+                "get-connection-string"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/connection/get-connections",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get connections status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "if ((!pm.collectionVariables.get('connectionId')) && json.data && Array.isArray(json.data.connections) && json.data.connections.length > 0) {",
+                  "    pm.collectionVariables.set('connectionId', json.data.connections[0]._id);",
+                  "}",
+                  "",
+                  "pm.test('Connections array exists', function () {",
+                  "    pm.expect(Array.isArray(json.data.connections)).to.eql(true);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/connection/get-connections",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "connection",
+                "get-connections"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/connection/connect-to-database",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Connect-to-database status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connectionId\": \"{{connectionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/connection/connect-to-database",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "connection",
+                "connect-to-database"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/connection/disconnect-database",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Disconnect status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connectionId\": \"{{connectionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/connection/disconnect-database",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "connection",
+                "disconnect-database"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "AI",
+      "item": [
+        {
+          "name": "POST /api/ai/get-mongo-schema",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Get schema status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "pm.test('Schema object exists', function () {",
+                  "    pm.expect(typeof json.data.schema).to.eql('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connectionId\": \"{{connectionId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/get-mongo-schema",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "get-mongo-schema"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/ai/run-ai-query - Query Mode",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Run AI query in query mode returns success', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "pm.test('AI query payload exists', function () {",
+                  "    pm.expect(json.data.aiQuery).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connectionId\": \"{{connectionId}}\",\n  \"question\": \"{{question}}\",\n  \"userSelection\": \"query\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/run-ai-query",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "run-ai-query"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST /api/ai/run-ai-query - Inference Mode",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Run AI query in inference mode returns success', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "var json = pm.response.json();",
+                  "pm.test('Analysis payload exists', function () {",
+                  "    pm.expect(json.data.analysis).to.be.an('object');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"connectionId\": \"{{connectionId}}\",\n  \"question\": \"{{question}}\",\n  \"userSelection\": \"inference\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/ai/run-ai-query",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "ai",
+                "run-ai-query"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
