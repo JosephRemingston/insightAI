@@ -97,3 +97,23 @@ export var disconnectDatabase = asyncHandler(async (req , res) => {
 
     return ApiResponse.success(res , "Disconnected from database successfully");
 });
+
+export var deleteConnection = asyncHandler(async (req , res) => {
+    var {connectionId} = req.body;
+    var userId = req.user._id;
+
+    if(!connectionId){
+        throw ApiError.badRequest("Connection ID is required");
+    }
+
+    var existingConnection = await Connection.findOne({ _id : connectionId, userId: userId });
+
+    if(!existingConnection){
+        throw ApiError.notFound("Connection not found");
+    }
+
+    await closeMongoConnection(connectionId.toString());
+    await Connection.deleteOne({ _id : connectionId, userId: userId });
+
+    return ApiResponse.success(res , "Connection deleted successfully");
+});
