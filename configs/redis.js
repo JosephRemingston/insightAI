@@ -19,4 +19,23 @@ if (redis) {
   });
 }
 
+// Check if Redis is available
+export const isRedisAvailable = () => {
+  return redis !== null && redis.status === 'ready';
+};
+
+// Connect to Redis
+export const connectRedis = async () => {
+  if (!redis) {
+    return false;
+  }
+  try {
+    await redis.ping();
+    return true;
+  } catch (error) {
+    console.warn('Redis connection check failed:', error.message);
+    return false;
+  }
+};
+
 export default redis;
