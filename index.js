@@ -17,22 +17,28 @@ app.use(cors({
             "http://localhost:3000",
             "http://localhost:5173",
             "http://localhost:4200",
-            "https://insightai-frontend-lilac.vercel.app"
+            "https://insightai-frontend-lilac.vercel.app",
+            "https://insight-ai-zeta.vercel.app"
         ];
         
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
         
-        // Check if origin is in allowed list or matches ngrok pattern
-        if (allowedOrigins.includes(origin) || /.*\.ngrok-free\.app$/.test(origin)) {
+        // Check if origin is in allowed list or matches patterns
+        if (allowedOrigins.includes(origin) || 
+            /.*\.ngrok-free\.app$/.test(origin) ||
+            /.*\.vercel\.app$/.test(origin)) {
             callback(null, true);
         } else {
+            console.warn(`CORS blocked request from origin: ${origin}`);
             callback(new Error('Not allowed by CORS'));
         }
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization", "ngrok-skip-browser-warning"]
+    allowedHeaders: ["Content-Type", "Authorization", "ngrok-skip-browser-warning"],
+    preflightContinue: false
+}));
 }));
 app.use(express.json());
 connectDB();
