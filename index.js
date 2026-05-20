@@ -12,7 +12,13 @@ var app = express();
 
 app.use(cors({
     origin: function(origin, callback) {
-        const allowedOrigins = ["*"]
+        const allowedOrigins = [
+            "http://localhost:8080",
+            "http://localhost:3000",
+            "http://localhost:5173",
+            "http://localhost:4200",
+            "https://insightai-frontend-lilac.vercel.app"
+        ];
         
         // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) return callback(null, true);
@@ -26,7 +32,7 @@ app.use(cors({
     },
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
-    allowedHeaders: ["Content-Type", "Authorization" , "ngrok-skip-browser-warning" , "Access-Control-Allow-Origin"]
+    allowedHeaders: ["Content-Type", "Authorization", "ngrok-skip-browser-warning"]
 }));
 app.use(express.json());
 connectDB();
