@@ -16,7 +16,9 @@ app.use(cors({
             "http://localhost:8080",
             "http://localhost:3000",
             "http://localhost:5173",
-            "http://localhost:4200"
+            "http://localhost:4200",
+            "https://insightai-frontend-lilac.vercel.app",
+            "*"
         ];
         
         // Allow requests with no origin (like mobile apps or curl requests)
