@@ -6,6 +6,7 @@ import authRoutes from "./routes/auth.routes.js";
 import aiRoutes from "./routes/ai.routes.js";
 import connectionRoutes from "./routes/connection.routes.js";
 import connectDB from "./configs/database.js";
+import { connectRedis } from "./configs/redis.js";
 
 
 var app = express();
@@ -17,7 +18,12 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization", "ngrok-skip-browser-warning"]
 }));
 app.use(express.json());
-connectDB();
+
+
+await connectDB();
+await connectRedis();
+
+
 app.use("/api/auth/" , authRoutes);
 app.use("/api/connection/" , connectionRoutes);
 app.use("/api/ai/" , aiRoutes);

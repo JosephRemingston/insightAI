@@ -1,41 +1,52 @@
-import Redis from 'ioredis';
+import Redis from "ioredis";
+import dotenv from "dotenv";
 
-const redisUrl = process.env.REDIS_URL || "localhost:6379";
+dotenv.config({ override: true });
 
-const redis = redisUrl
-  ? new Redis(redisUrl, {
-      maxRetriesPerRequest: 1,
-      enableOfflineQueue: false,
-    })
-  : null;
+let redisClient = null;
 
-if (redis) {
-  redis.on('connect', () => {
-    console.log('✓ Redis connected');
-  });
+const getRedisUrl = () => {
+  const redisUrl = process.env.REDIS_URL;
 
-  redis.on('error', (err) => {
-    console.error('Redis error:', err.message);
-  });
-}
+  if (!redisUrl) {
+    throw new Error("REDIS_URL is not set");
+  }
 
-// Check if Redis is available
-export const isRedisAvailable = () => {
-  return redis !== null && redis.status === 'ready';
+  return redisUrl;
 };
 
-// Connect to Redis
 export const connectRedis = async () => {
-  if (!redis) {
-    return false;
-  }
   try {
-    await redis.ping();
-    return true;
+    redisClient = new Redis(getRedisUrl(), {
+      maxRetriesPerRequest: 1,
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000);
+        return delay;
+      }
+    });
+
+    await redisClient.ping();
+
+    console.log("✓ Redis connected");
+    return redisClient;
   } catch (error) {
-    console.warn('Redis connection check failed:', error.message);
-    return false;
+    console.warn("⚠ Redis connection failed:", error.message);
+    console.warn("⚠ App will continue without Redis caching");
+    redisClient = null;
+    return null;
   }
 };
 
-export default redis;
+export const isRedisAvailable = () => {
+  return redisClient !== null && redisClient.status === 'ready';
+};
+
+export const getRedis = () => {
+  if (!redisClient) {
+    throw new Error("Redis is not initialized");
+  }
+
+  return redisClient;
+};
+
+export default redisClient;
