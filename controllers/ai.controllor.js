@@ -3,9 +3,16 @@ import ApiError from "../utils/ApiError.js";
 import ApiResponse from "../utils/ApiResponse.js";
 import { inferType , inferencePrompt, getOrCreateMongoConnection, systemPrompt } from "../utils/mongoConnections.js";
 import { executeMongoQuery } from "../utils/aiUtils.js";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { Connection } from "../models/connection.models.js";
 import { decryptString } from "../configs/encryption.js";
+import {OpenRouter} from "@openrouter/sdk";
+
+var client = new OpenRouter({
+  apiKey: process.env.OPENROUTER_API_KEY,
+});
+
+const MODEL = "qwen/qwen-2.5-72b-instruct";
+
 
 async function getResolvedMongoConnection(userId, connectionId){
     var savedConnection = await Connection.findOne({ _id: connectionId, userId: userId });
@@ -93,24 +100,34 @@ export var runAiQuery = asyncHandler(async (req, res) => {
     const { connection } = await getResolvedMongoConnection(userId, connectionId);
     const schema = await buildMongoSchema(connection.db);
 
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
     const prompt = `Schema: ${JSON.stringify(schema, null, 2)} User Question: ${question}`;
     const fullPrompt = `${systemPrompt}\n\n${prompt}`;
-    const aiOutput = await model.generateContent(fullPrompt);
+    
+    const aiOutput = await client.chat.send({
+        chatRequest : {
+            model: MODEL,
+            messages: [
+                {
+                    role: "user",
+                    content: fullPrompt
+                }
+            ],
+        },
+    });
 
-    console.log("AI Raw Response:", aiOutput.response.text());
+    const responseText = aiOutput.choices[0].message.content;
+    console.log("AI Raw Response:", responseText);
+
 
     let aiResponse;
     try {
-        const cleanedResponse = cleanJsonResponse(aiOutput.response.text());
+        const cleanedResponse = cleanJsonResponse(responseText);
         console.log("Cleaned Response:", cleanedResponse);
         aiResponse = JSON.parse(cleanedResponse);
     } catch (err) {
         console.error("JSON Parse Error:", err.message);
-        console.error("AI Response Text:", aiOutput.response.text());
-        throw ApiError.internal("AI returned invalid JSON: " + aiOutput.response.text().substring(0, 200));
+        console.error("AI Response Text:", responseText);
+        throw ApiError.internal("AI returned invalid JSON: " + responseText.substring(0, 200));
     }
 
     if(userSelection === "query"){
@@ -152,10 +169,21 @@ export var runAiQuery = asyncHandler(async (req, res) => {
       Collection: ${aiResponse.collection}
       `;
 
-    const analysisModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const analysisOutput = await analysisModel.generateContent(`${inferencePrompt}\n\n${analysisPrompt}`);
+    const analysisOutput = await client.chat.send({
+        chatRequest : {
+            model: MODEL,
+            messages: [
+                {
+                    role: "user",
+                    content: `${inferencePrompt}\n\n${analysisPrompt}`
+                }
+            ],
+        },
+    });
 
-    const cleanedAnalysisResponse = cleanJsonResponse(analysisOutput.response.text());
+    const analysisResponseText = analysisOutput.choices[0].message.content;
+    console.log("AI Analysis Raw Response:", analysisResponseText);
+    const cleanedAnalysisResponse = cleanJsonResponse(analysisResponseText);
     console.log("Cleaned Analysis Response:", cleanedAnalysisResponse);
 
     let finalAnalysis;
@@ -163,8 +191,8 @@ export var runAiQuery = asyncHandler(async (req, res) => {
         finalAnalysis = JSON.parse(cleanedAnalysisResponse);
     } catch (err) {
         console.error("JSON Parse Error:", err.message);
-        console.error("Analysis Response Text:", analysisOutput.response.text());
-        throw ApiError.internal("AI returned invalid JSON for analysis: " + analysisOutput.response.text().substring(0, 200));
+        console.error("Analysis Response Text:", analysisResponseText);
+        throw ApiError.internal("AI returned invalid JSON for analysis: " + analysisResponseText.substring(0, 200));
     }
 
     if (!finalAnalysis.answer) {
@@ -174,4 +202,5 @@ export var runAiQuery = asyncHandler(async (req, res) => {
     return ApiResponse.success(res, "Analysis completed successfully", {
         analysis: finalAnalysis,
     });
+
 });
